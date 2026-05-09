@@ -30,7 +30,18 @@ export function useVeilOracle() {
       const llmInput = encodeLLMInput(address, Number(fortuneCount ?? 0n), Number(totalFortunes ?? 0n), EXECUTOR_ADDRESS)
       setOracleState('awaiting_sign')
       const data = encodeFunctionData({ abi: VEIL_ORACLE_ABI, functionName: 'requestFortune', args: [llmInput] })
-      const hash = await sendTransactionAsync({ to: VEIL_ORACLE_ADDRESS, data, value: (fortuneFee as bigint) ?? 0n })
+      const gasCap = 1_000_000n
+      const maxFeePerGas = 1_000_000_000n
+      const maxPriorityFeePerGas = 1_000_000_000n
+
+      const hash = await sendTransactionAsync({
+        to: VEIL_ORACLE_ADDRESS,
+        data,
+        value: (fortuneFee as bigint) ?? 0n,
+        gas: gasCap,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      })
       setTxHash(hash)
       setOracleState('transmitting')
     } catch (e: any) {
