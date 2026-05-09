@@ -56,11 +56,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const publicClient = createPublicClient({ chain: ritualChain, transport: http('https://rpc.ritualfoundation.org') })
   const walletClient = createWalletClient({ account, chain: ritualChain, transport: http('https://rpc.ritualfoundation.org') })
 
-  const count = await publicClient.readContract({ address: ORACLE, abi: ABI, functionName: 'fortuneCount', args: [seeker] })
-  const total = await publicClient.readContract({ address: ORACLE, abi: ABI, functionName: 'totalFortunes' })
+  const count = await (publicClient as any).readContract({ address: ORACLE, abi: ABI, functionName: 'fortuneCount', args: [seeker] })
+  const total = await (publicClient as any).readContract({ address: ORACLE, abi: ABI, functionName: 'totalFortunes' })
   const llmInput = encodeLLMInput(seeker, Number(count), Number(total))
 
-  const hash = await walletClient.writeContract({
+  const hash = await (walletClient as any).writeContract({
+    chain: ritualChain,
     address: ORACLE,
     abi: ABI,
     functionName: 'requestFortuneFor',
