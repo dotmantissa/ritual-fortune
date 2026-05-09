@@ -44,16 +44,29 @@ contract VeilOracle is PrecompileConsumer, Ownable {
 
     function requestFortune(bytes calldata llmInput) external payable returns (string memory fortune) {
         if (msg.value < fortuneFee) revert InsufficientFee();
+        return _requestFortuneFor(msg.sender, llmInput);
+    }
 
+    function requestFortuneFor(address seeker, bytes calldata llmInput)
+        external
+        payable
+        onlyOwner
+        returns (string memory fortune)
+    {
+        if (msg.value < fortuneFee) revert InsufficientFee();
+        return _requestFortuneFor(seeker, llmInput);
+    }
+
+    function _requestFortuneFor(address seeker, bytes calldata llmInput) internal returns (string memory fortune) {
         totalFortunes += 1;
-        fortuneCount[msg.sender] += 1;
+        fortuneCount[seeker] += 1;
 
         bytes memory output = _executePrecompile(LLM_INFERENCE_PRECOMPILE, llmInput);
 
-        bytes32 jobId = keccak256(abi.encode(msg.sender, block.number, totalFortunes, llmInput));
-        pendingFortunes[jobId] = PendingFortune(msg.sender, fortuneCount[msg.sender], true);
-        seekerToJobId[msg.sender] = jobId;
-        emit FortuneRequested(msg.sender, fortuneCount[msg.sender], jobId);
+        bytes32 jobId = keccak256(abi.encode(seeker, block.number, totalFortunes, llmInput));
+        pendingFortunes[jobId] = PendingFortune(seeker, fortuneCount[seeker], true);
+        seekerToJobId[seeker] = jobId;
+        emit FortuneRequested(seeker, fortuneCount[seeker], jobId);
 
         (bool hasError, bytes memory completionData, , string memory errorMessage, ) = abi.decode(
             output,
@@ -63,12 +76,12 @@ contract VeilOracle is PrecompileConsumer, Ownable {
         require(!hasError, errorMessage);
 
         fortune = abi.decode(completionData, (string));
-        lastFortune[msg.sender] = fortune;
+        lastFortune[seeker] = fortune;
 
         delete pendingFortunes[jobId];
-        delete seekerToJobId[msg.sender];
+        delete seekerToJobId[seeker];
 
-        emit FortuneDelivered(msg.sender, fortuneCount[msg.sender], fortune);
+        emit FortuneDelivered(seeker, fortuneCount[seeker], fortune);
     }
 
     function setExecutor(address _executor) external onlyOwner {
